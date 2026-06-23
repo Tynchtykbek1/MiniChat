@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat - MiniChat</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="chat-page">
+  <main class="chat-container">
+    <header class="chat-header">
+      <h1>MiniChat</h1>
+      <div>
+        <span>Logged in as <strong id="current-user-name"></strong></span>
+        <button id="logout-button" type="button">Logout</button>
+      </div>
+    </header>
+
+    <div class="chat-layout">
+      <aside class="users-panel">
+        <h2>Users</h2>
+        <div id="users-list"></div>
+      </aside>
+
+      <section class="conversation-panel">
+        <h2 id="chat-title">Select a user</h2>
+        <div class="empty-chat">No messages yet.</div>
+      </section>
+    </div>
+  </main>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="/js/chat.js"></script>
+</body>
+</html>

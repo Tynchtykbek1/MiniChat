@@ -174,6 +174,33 @@ app.get('/api/me', (req, res) => {
   });
 });
 
+app.get('/api/users', async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Not logged in'
+    });
+  }
+
+  try {
+    const [users] = await pool.execute(
+      'SELECT id, name, email FROM users WHERE status = ? AND id != ? ORDER BY name',
+      ['active', req.session.user.id]
+    );
+
+    return res.json({
+      success: true,
+      users
+    });
+  } catch (error) {
+    console.error('Users error:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Could not load users'
+    });
+  }
+});
+
 io.on('connection', (socket) => {
   console.log(`Socket connected: ${socket.id}`);
 

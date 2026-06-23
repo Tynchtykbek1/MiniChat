@@ -39,8 +39,8 @@ $(function () {
         email: $('#email').val(),
         password: $('#password').val()
       }),
-      success: function (response) {
-        showMessage('Login successful. Welcome, ' + response.user.name + '!', true);
+      success: function () {
+        window.location.href = '/chat.html';
       },
       error: function (xhr) {
         showMessage(xhr.responseJSON?.message || 'Login failed', false);
