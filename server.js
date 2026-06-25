@@ -11,19 +11,17 @@ const pool = require('./db');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+const sessionMiddleware = session({
+  secret: process.env.SESSION_SECRET || 'development_secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { httpOnly: true }
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
-
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || 'development_secret',
-    resave: false,
-    saveUninitialized: false,
-    cookie: { httpOnly: true }
-  })
-);
+app.use(sessionMiddleware);
 
 app.get('/api/health', (req, res) => {
   res.json({
@@ -201,11 +199,131 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
+app.get('/api/messages/:otherUserId', async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Not logged in'
+    });
+  }
+
+  const currentUserId = req.session.user.id;
+  const otherUserId = Number(req.params.otherUserId);
+
+  if (!Number.isInteger(otherUserId) || otherUserId <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid user id'
+    });
+  }
+
+  try {
+    const [messages] = await pool.execute(
+      `SELECT id, sender_id, receiver_id, message_text, is_read, created_at
+       FROM messages
+       WHERE (sender_id = ? AND receiver_id = ?)
+          OR (sender_id = ? AND receiver_id = ?)
+       ORDER BY created_at ASC`,
+      [currentUserId, otherUserId, otherUserId, currentUserId]
+    );
+
+    return res.json({
+      success: true,
+      messages
+    });
+  } catch (error) {
+    console.error('Messages error:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Could not load messages'
+    });
+  }
+});
+
+io.use((socket, next) => {
+  sessionMiddleware(socket.request, {}, next);
+});
+
 io.on('connection', (socket) => {
-  console.log(`Socket connected: ${socket.id}`);
+  const sessionUser = socket.request.session && socket.request.session.user;
+
+  if (!sessionUser) {
+    socket.disconnect(true);
+    return;
+  }
+
+  const userRoom = `user_${sessionUser.id}`;
+  socket.join(userRoom);
+  console.log(`Socket connected for user ${sessionUser.id}`);
+
+  socket.on('send_message', async (data, callback) => {
+    const sender = socket.request.session && socket.request.session.user;
+    const receiverId = Number(data?.receiverId);
+    const messageText = data?.messageText?.trim();
+
+    function respond(response) {
+      if (typeof callback === 'function') {
+        callback(response);
+      }
+    }
+
+    if (!sender) {
+      respond({ success: false, message: 'Not logged in' });
+      return;
+    }
+
+    if (!Number.isInteger(receiverId) || receiverId <= 0) {
+      respond({ success: false, message: 'Invalid receiver' });
+      return;
+    }
+
+    if (!messageText) {
+      respond({ success: false, message: 'Message cannot be empty' });
+      return;
+    }
+
+    if (receiverId === sender.id) {
+      respond({ success: false, message: 'You cannot send a message to yourself' });
+      return;
+    }
+
+    try {
+      const [receivers] = await pool.execute(
+        'SELECT id FROM users WHERE id = ? AND status = ?',
+        [receiverId, 'active']
+      );
+
+      if (receivers.length === 0) {
+        respond({ success: false, message: 'Receiver not found' });
+        return;
+      }
+
+      const [result] = await pool.execute(
+        'INSERT INTO messages (sender_id, receiver_id, message_text) VALUES (?, ?, ?)',
+        [sender.id, receiverId, messageText]
+      );
+
+      const [savedMessages] = await pool.execute(
+        `SELECT id, sender_id, receiver_id, message_text, is_read, created_at
+         FROM messages
+         WHERE id = ?`,
+        [result.insertId]
+      );
+
+      const savedMessage = savedMessages[0];
+
+      io.to(`user_${receiverId}`).emit('receive_message', savedMessage);
+      io.to(`user_${sender.id}`).emit('receive_message', savedMessage);
+
+      respond({ success: true, message: savedMessage });
+    } catch (error) {
+      console.error('Send message error:', error.message);
+      respond({ success: false, message: 'Could not send message' });
+    }
+  });
 
   socket.on('disconnect', () => {
-    console.log(`Socket disconnected: ${socket.id}`);
+    console.log(`Socket disconnected for user ${sessionUser.id}`);
   });
 });
 
