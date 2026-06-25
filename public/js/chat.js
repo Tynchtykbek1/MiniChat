@@ -119,6 +119,7 @@ $(function () {
     success: function (response) {
       currentUser = response.user;
       $('#current-user-name').text(currentUser.name);
+      $('#admin-link').toggle(currentUser.role === 'admin');
       connectSocket();
       loadUsers();
     },

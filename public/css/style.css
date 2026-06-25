@@ -112,6 +112,10 @@ a {
   margin: 0;
 }
 
+.admin-link {
+  display: none;
+}
+
 .chat-layout {
   display: grid;
   grid-template-columns: 280px 1fr;
@@ -208,6 +212,61 @@ a {
 .message-form button {
   width: auto;
   margin: 0;
+}
+
+.admin-container {
+  overflow: auto;
+}
+
+.admin-section {
+  padding: 20px;
+  border-top: 1px solid #ddd;
+}
+
+.admin-section h2 {
+  margin-top: 0;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+th,
+td {
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background: #eef2f7;
+}
+
+.small-button {
+  width: auto;
+  margin: 0;
+  padding: 7px 10px;
+  font-size: 14px;
+}
+
+.small-button:disabled {
+  background: #999;
+  cursor: not-allowed;
+}
+
+.danger-button {
+  background: #c62828;
+}
+
+.danger-button:hover {
+  background: #a61f1f;
 }
 
 @media (max-width: 650px) {

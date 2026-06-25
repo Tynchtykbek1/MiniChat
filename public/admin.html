@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - MiniChat</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="chat-page">
+  <main class="chat-container admin-container">
+    <header class="chat-header">
+      <h1>Admin Panel</h1>
+      <div>
+        <span>Admin: <strong id="admin-name"></strong></span>
+        <a href="/chat.html">Back to chat</a>
+        <button id="logout-button" type="button">Logout</button>
+      </div>
+    </header>
+
+    <section class="admin-section">
+      <h2>Users</h2>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="users-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="admin-section">
+      <h2>Recent Messages</h2>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Sender</th>
+              <th>Receiver</th>
+              <th>Message</th>
+              <th>Created</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="messages-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>

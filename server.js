@@ -23,6 +23,24 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 app.use(sessionMiddleware);
 
+function requireAdmin(req, res, next) {
+  if (!req.session.user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Not logged in'
+    });
+  }
+
+  if (req.session.user.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Admin access required'
+    });
+  }
+
+  next();
+}
+
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
@@ -236,6 +254,143 @@ app.get('/api/messages/:otherUserId', async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Could not load messages'
+    });
+  }
+});
+
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
+  try {
+    const [users] = await pool.execute(
+      'SELECT id, name, email, role, status, created_at FROM users ORDER BY created_at DESC'
+    );
+
+    return res.json({
+      success: true,
+      users
+    });
+  } catch (error) {
+    console.error('Admin users error:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Could not load users'
+    });
+  }
+});
+
+app.patch('/api/admin/users/:id/status', requireAdmin, async (req, res) => {
+  const userId = Number(req.params.id);
+  const { status } = req.body;
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid user id'
+    });
+  }
+
+  if (!['active', 'blocked'].includes(status)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Status must be active or blocked'
+    });
+  }
+
+  if (userId === req.session.user.id && status === 'blocked') {
+    return res.status(400).json({
+      success: false,
+      message: 'Admin cannot block himself'
+    });
+  }
+
+  try {
+    const [result] = await pool.execute(
+      'UPDATE users SET status = ? WHERE id = ?',
+      [status, userId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'User status updated'
+    });
+  } catch (error) {
+    console.error('Admin user status error:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Could not update user status'
+    });
+  }
+});
+
+app.get('/api/admin/messages', requireAdmin, async (req, res) => {
+  try {
+    const [messages] = await pool.execute(
+      `SELECT
+         m.id,
+         sender.name AS sender_name,
+         sender.email AS sender_email,
+         receiver.name AS receiver_name,
+         receiver.email AS receiver_email,
+         m.message_text,
+         m.created_at
+       FROM messages m
+       JOIN users sender ON m.sender_id = sender.id
+       JOIN users receiver ON m.receiver_id = receiver.id
+       ORDER BY m.created_at DESC
+       LIMIT 100`
+    );
+
+    return res.json({
+      success: true,
+      messages
+    });
+  } catch (error) {
+    console.error('Admin messages error:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Could not load messages'
+    });
+  }
+});
+
+app.delete('/api/admin/messages/:id', requireAdmin, async (req, res) => {
+  const messageId = Number(req.params.id);
+
+  if (!Number.isInteger(messageId) || messageId <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid message id'
+    });
+  }
+
+  try {
+    const [result] = await pool.execute(
+      'DELETE FROM messages WHERE id = ?',
+      [messageId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Message not found'
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Message deleted'
+    });
+  } catch (error) {
+    console.error('Admin delete message error:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Could not delete message'
     });
   }
 });
